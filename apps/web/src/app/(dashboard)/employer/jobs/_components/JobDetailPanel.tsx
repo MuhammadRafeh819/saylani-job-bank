@@ -6,11 +6,11 @@ import {
   JOB_TYPE_LABELS,
   SHIFT_TYPE_LABELS,
   GENDER_PREFERENCE_LABELS,
+  allowedTransitions,
 } from '@jobbank/shared';
-import type { JobView } from '@/domains/job/repository';
+import type { JobView } from '@/domains/job';
 import { apiFetch } from '@/lib/api/client';
 import { Badge, Button, Link } from '@/components/atoms';
-import { allowedTransitions } from '@/domains/job/rules';
 import { useRouter } from 'next/navigation';
 import { Pencil, Trash2, Users } from 'lucide-react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Check } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -22,33 +22,48 @@ export function NotificationBell({ viewAllHref = '/notifications' }: { viewAllHr
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     apiFetch<NotificationItem[]>('/api/v1/notifications?pageSize=8')
       .then(({ data, meta }) => {
+        if (!active) return;
         setItems(data);
-        if (meta) setUnread(meta.total - data.filter((i) => i.readAt).length);
+        if (meta?.unread !== undefined) setUnread(meta.unread);
+        setError(null);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setError('Could not load notifications. Please try again.');
+      });
+    return () => {
+      active = false;
+    };
   }, [open]);
 
   async function markRead(id: string) {
     try {
+      setError(null);
       await apiFetch(`/api/v1/notifications/${id}`, { method: 'PATCH' });
       setItems((prev) =>
         prev.map((i) => (i.id === id ? { ...i, readAt: new Date().toISOString() } : i)),
       );
       setUnread((u) => Math.max(0, u - 1));
       router.refresh();
-    } catch {}
+    } catch {
+      setError('Could not mark the notification as read. Please try again.');
+    }
   }
 
   async function markAll() {
     try {
+      setError(null);
       await apiFetch('/api/v1/notifications/read-all', { method: 'POST' });
       setItems((prev) => prev.map((i) => ({ ...i, readAt: new Date().toISOString() })));
       setUnread(0);
-    } catch {}
+    } catch {
+      setError('Could not mark notifications as read. Please try again.');
+    }
   }
 
   return (
@@ -89,7 +104,12 @@ export function NotificationBell({ viewAllHref = '/notifications' }: { viewAllHr
             )}
           </div>
           <div className="max-h-80 overflow-y-auto">
-            {items.length === 0 ? (
+            {error && (
+              <p role="alert" className="text-danger px-4 py-3 text-sm">
+                {error}
+              </p>
+            )}
+            {items.length === 0 && !error ? (
               <p className="text-fg-muted px-4 py-8 text-center text-sm">No notifications yet.</p>
             ) : (
               items.map((item) => (

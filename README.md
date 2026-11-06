@@ -52,6 +52,12 @@ entials |
 
 The ports are 5433 and 6380 rather than the defaults, so they don't clash with a local Postgres or Redis.
 
+The matching service's `/internal/matches` endpoints require an `Authorization: Bearer <token>`
+header matching `MATCHING_INTERNAL_API_TOKEN` (a random secret of at least 32 characters).
+If it is unset or too short, these endpoints return 503; the worker and `/health` continue to
+operate. Keep the service on a private network and store the token in a secrets manager in
+production. Restart the matching service after changing its configuration.
+
 ## Signing in locally
 
 `pnpm db:seed` creates two branches (Karachi Gulshan and Lahore Johar Town) and one account per role. These are development-only accounts and are never seeded in production.

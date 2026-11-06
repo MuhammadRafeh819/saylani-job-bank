@@ -2,14 +2,38 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from secrets import compare_digest
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from .repository import read_latest_matches
 from .service import run_job_match
 from .types import MatchRunReport
 
-router = APIRouter(prefix="/internal/matches", tags=["matching"])
+bearer = HTTPBearer(auto_error=False)
+
+
+async def require_internal_token(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+) -> None:
+    token = request.app.state.settings.internal_api_token
+    if not token or len(token) < 32:
+        raise HTTPException(status_code=503, detail="Internal API authentication is not configured")
+    if not credentials or not compare_digest(credentials.credentials.encode(), token.encode()):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid internal API credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+router = APIRouter(
+    prefix="/internal/matches", tags=["matching"], dependencies=[Depends(require_internal_token)]
+)
 
 
 class RunRequest(BaseModel):
