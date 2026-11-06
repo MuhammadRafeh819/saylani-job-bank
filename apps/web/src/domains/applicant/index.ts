@@ -28,11 +28,20 @@ export {
 } from './profile';
 export type { ApplicantDocumentType, ApplicantDocumentView, ApplicantProfile } from './repository';
 export {
+  createApplicantRegistrationForm,
+  ensureApplicantVerificationToken,
+  getPublicApplicantVerification,
+  resolveApplicantVerification,
+} from './verification';
+export type { PublicApplicantVerification, RegistrationFormData } from './registration-form.types';
+export {
   APPLICANT_SORTABLE,
   applicantFilters,
   changeApplicantPhone,
   getApplicantForStaff,
   listApplicants,
+  registerApplicantForStaff,
+  staffUpdateApplicantProfile,
   staffSetApplicantStatus,
   staffUpdateApplicant,
   transferApplicant,

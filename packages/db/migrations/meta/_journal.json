@@ -120,6 +120,20 @@
                         "when":  1792015643000,
                         "tag":  "0017_match_decisions",
                         "breakpoints":  true
+                    },
+                    {
+                        "idx":  17,
+                        "version":  "7",
+                        "when":  1793895993475,
+                        "tag":  "0018_staff_assisted_applicants",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  18,
+                        "version":  "7",
+                        "when":  1793895995000,
+                        "tag":  "0019_applicant_registration_verification",
+                        "breakpoints":  true
                     }
                 ]
 }

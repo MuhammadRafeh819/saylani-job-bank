@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import {
   COMPANY_SORTABLE,
   companyFilters,
@@ -7,7 +6,7 @@ import {
 } from '@/domains/company';
 import { apiHandler, created, ok } from '@/domains/shared/http';
 import { parseListQuery } from '@/domains/shared/pagination';
-import { registerCompanySchema } from '@jobbank/shared';
+import { staffRegisterCompanySchema } from '@jobbank/shared';
 
 /** GET /api/v1/companies — branch-scoped company list (Branch Admin: verified only; Super Admin: all). */
 export const GET = apiHandler({
@@ -25,7 +24,8 @@ export const GET = apiHandler({
 /** POST /api/v1/companies — Branch Admin / Super Admin registers a company for their branch. */
 export const POST = apiHandler({
   permission: 'company:manage',
-  body: registerCompanySchema.extend({ branchId: z.uuid() }),
+  body: staffRegisterCompanySchema,
+  idempotent: true,
   handler: async ({ ctx, actor, body }) => {
     const company = await staffRegisterCompany({ ...ctx, actor: actor! }, body);
     return created(company);

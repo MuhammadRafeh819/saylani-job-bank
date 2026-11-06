@@ -13,7 +13,8 @@ import {
   type IdentityMethod,
   type IdentityOutcome,
 } from '@jobbank/shared';
-import { ArrowRightLeft, BadgeCheck, Pencil, Phone, UserCheck, UserX } from 'lucide-react';
+import { ArrowRightLeft, BadgeCheck, Pencil, Phone, Printer, UserCheck, UserX } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Badge, Button, Input, RadioGroup, Select, Textarea } from '@/components/atoms';
@@ -453,6 +454,18 @@ export function ApplicantDetailView({
 
   return (
     <div className="grid gap-6">
+      <div className="flex flex-wrap justify-end gap-2">
+        {applicant.can.manage && (
+          <Button asChild variant="primary" leftIcon={<Pencil />}>
+            <Link href={`${listPath}/${applicant.id}/edit`}>Edit Profile</Link>
+          </Button>
+        )}
+        <Button asChild variant="secondary" leftIcon={<Printer />}>
+          <Link href={`/print/applicants/${applicant.id}/registration`}>
+            Print Registration Form
+          </Link>
+        </Button>
+      </div>
       {applicant.status === 'INACTIVE' && applicant.statusReason && (
         <p className="bg-surface-muted text-fg-muted rounded-lg px-4 py-3 text-sm">
           Deactivated by staff: {applicant.statusReason}

@@ -1,4 +1,5 @@
 import { schema } from '@jobbank/db';
+import { randomUUID } from 'node:crypto';
 import { and, eq, isNull } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PATCH as decideMatch } from '@/app/api/v1/jobs/[id]/matches/[applicantId]/route';
@@ -91,6 +92,7 @@ async function seedFixture() {
       .insert(ap)
       .values({
         userId: applicantUser.id,
+        registrationReference: `SJB-${randomUUID()}`,
         branchId: KHI,
         fullName: 'Decision Tester',
         fatherName: 'Test Father',

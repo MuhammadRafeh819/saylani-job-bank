@@ -1,5 +1,6 @@
 import {
   APPLICANT_DOCUMENT_STATUSES,
+  APPLICANT_REGISTRATION_SOURCES,
   APPLICANT_STATUSES,
   GENDERS,
   IDENTITY_METHODS,
@@ -21,6 +22,7 @@ import {
   smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { geographyPoint } from '../types/geography';
@@ -48,6 +50,14 @@ export const applicants = pgTable(
       .unique()
       .references(() => users.id, { onDelete: 'restrict' }),
     branchId: uuid().references(() => branches.id, { onDelete: 'restrict' }),
+    registrationSource: text({ enum: APPLICANT_REGISTRATION_SOURCES })
+      .notNull()
+      .default('SELF_SERVICE'),
+    registrationReference: text().notNull().unique(),
+    registeredBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+    registeredAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    contactConfirmedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+    contactConfirmedAt: timestamp({ withTimezone: true }),
     fullName: text().notNull(),
     fatherName: text().notNull(),
     /** 13 digits, no dashes. Never sent to employers (PRD rule 3). */
@@ -75,6 +85,10 @@ export const applicants = pgTable(
       sql`${t.identityStatus} in (${list(IDENTITY_STATUSES)})`,
     ),
     check('applicants_gender_valid', sql`${t.gender} in (${list(GENDERS)})`),
+    check(
+      'applicants_registration_source_valid',
+      sql`${t.registrationSource} in (${list(APPLICANT_REGISTRATION_SOURCES)})`,
+    ),
     check('applicants_completeness_range', sql`${t.profileCompleteness} between 0 and 100`),
     check(
       'applicants_active_needs_branch',
@@ -296,6 +310,35 @@ export const identityVerifications = pgTable(
     check(
       'identity_verifications_outcome_valid',
       sql`${t.outcome} in (${list(IDENTITY_OUTCOMES)})`,
+    ),
+  ],
+);
+
+/** QR verification credentials are hash-indexed; ciphertext is only for authorized reprints. */
+export const applicantVerificationTokens = pgTable(
+  'applicant_verification_tokens',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    applicantId: uuid()
+      .notNull()
+      .references(() => applicants.id, { onDelete: 'cascade' }),
+    tokenHash: text().notNull().unique(),
+    tokenCiphertext: text().notNull(),
+    isActive: boolean().notNull().default(true),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+    revokedAt: timestamp({ withTimezone: true }),
+    revokedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  },
+  (t) => [
+    uniqueIndex('applicant_verification_tokens_active_applicant_idx')
+      .on(t.applicantId)
+      .where(sql`${t.isActive}`),
+    index('applicant_verification_tokens_applicant_idx').on(t.applicantId, t.createdAt),
+    check(
+      'applicant_verification_tokens_revocation_consistent',
+      sql`(${t.isActive} and ${t.revokedAt} is null and ${t.revokedBy} is null)
+       or (not ${t.isActive} and ${t.revokedAt} is not null)`,
     ),
   ],
 );

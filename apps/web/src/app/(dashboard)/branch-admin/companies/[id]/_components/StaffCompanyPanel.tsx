@@ -1,18 +1,23 @@
 'use client';
 
 import { COMPANY_SIZE_LABELS, LEGAL_STRUCTURE_LABELS, type CompanyStatus } from '@jobbank/shared';
-import { ArrowLeft, Building2, ExternalLink, Pause, Play } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Pause, Play } from 'lucide-react';
 import NextLink from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Badge, Button, StatusPill, Textarea } from '@/components/atoms';
 import { FormField, KeyValue } from '@/components/molecules';
 import { ApiClientError, apiFetch } from '@/lib/api/client';
-import type { CompanyView } from '@/domains/company/repository';
+import type { CompanyView } from '@/domains/company';
+import type { JobView } from '@/domains/job';
+import { JobManagementPanel } from '@/app/(dashboard)/_components/jobs/JobManagementPanel';
 
 const STATUS_PILL: Record<
   CompanyStatus,
-  { label: string; variant: 'success' | 'danger' | 'warning' | 'neutral' | 'info' }
+  {
+    label: string;
+    variant: 'success' | 'danger' | 'warning' | 'neutral' | 'info';
+  }
 > = {
   DRAFT: { label: 'Draft', variant: 'neutral' },
   SUBMITTED: { label: 'Submitted', variant: 'info' },
@@ -26,12 +31,16 @@ const STATUS_PILL: Record<
 
 export function StaffCompanyPanel({
   company,
+  jobs,
   canSuspend,
-  canManage,
+  canManageJobs,
+  categories,
 }: {
   company: CompanyView;
+  jobs: JobView[];
   canSuspend: boolean;
-  canManage: boolean;
+  canManageJobs: boolean;
+  categories: { code: string; label: string }[];
 }) {
   const pathname = usePathname();
   const backHref = pathname.includes('super-admin')
@@ -165,9 +174,18 @@ export function StaffCompanyPanel({
           columns={2}
           items={[
             { label: 'NTN', value: company_.details.ntn },
-            { label: 'Reg. no.', value: company_.details.registrationNo ?? '—' },
-            { label: 'Structure', value: LEGAL_STRUCTURE_LABELS[company_.details.legalStructure] },
-            { label: 'Size', value: COMPANY_SIZE_LABELS[company_.details.sizeBand] },
+            {
+              label: 'Reg. no.',
+              value: company_.details.registrationNo ?? '—',
+            },
+            {
+              label: 'Structure',
+              value: LEGAL_STRUCTURE_LABELS[company_.details.legalStructure],
+            },
+            {
+              label: 'Size',
+              value: COMPANY_SIZE_LABELS[company_.details.sizeBand],
+            },
             { label: 'Branch', value: company_.branch?.name ?? '—' },
           ]}
         />
@@ -236,6 +254,13 @@ export function StaffCompanyPanel({
           </div>
         </section>
       )}
+      <JobManagementPanel
+        companyId={company_.id}
+        jobs={jobs}
+        categories={categories}
+        canManage={canManageJobs}
+        canCreate={company_.status === 'VERIFIED'}
+      />
     </div>
   );
 }

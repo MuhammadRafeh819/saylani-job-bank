@@ -24,6 +24,9 @@ export {
   JOB_SORTABLE,
   jobFilters,
   listJobs,
+  listCompanyJobs,
   staffCreateJob,
+  staffChangeJobStatus,
+  staffUpdateJob,
   type JobListItem,
 } from './staff';

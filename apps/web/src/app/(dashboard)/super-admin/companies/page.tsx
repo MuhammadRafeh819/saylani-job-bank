@@ -1,8 +1,9 @@
 import { listCompanies } from '@/domains/company';
 import { requireRole } from '@/domains/auth';
-import { Badge, Link } from '@/components/atoms';
+import { Badge, Button, Link } from '@/components/atoms';
 import { EmptyState } from '@/components/molecules';
 import { Building2 } from 'lucide-react';
+import NextLink from 'next/link';
 
 export const metadata = { title: 'Companies' };
 
@@ -34,9 +35,14 @@ export default async function SuperAdminCompaniesPage() {
 
   return (
     <div className="grid w-full gap-6">
-      <header>
-        <h1 className="text-fg text-2xl font-semibold">All companies</h1>
-        <p className="text-fg-muted mt-1 text-sm">{pagination.total} registered</p>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-fg text-2xl font-semibold">All companies</h1>
+          <p className="text-fg-muted mt-1 text-sm">{pagination.total} registered</p>
+        </div>
+        <Button asChild size="sm">
+          <NextLink href="/super-admin/companies/new">Add company</NextLink>
+        </Button>
       </header>
 
       {items.length === 0 ? (

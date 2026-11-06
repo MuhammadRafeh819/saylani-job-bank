@@ -27,6 +27,7 @@ export default async function BranchAdminAddCompanyPage() {
       <StaffRegisterCompanyForm
         branches={myBranches}
         industries={industries.map((i) => ({ code: i.code, label: i.label }))}
+        companiesPath="/branch-admin/companies"
       />
     </div>
   );

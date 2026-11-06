@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { formatCnic, isValidCnic, maskCnic } from './cnic';
 import { distanceBand, distanceTone, formatDistance } from './distance';
-import { formatPkMobileDisplay, formatPkMobileNational, normalizePkMobile } from './phone';
+import {
+  formatPkMobileDisplay,
+  formatPkMobileNational,
+  isSupportedPkMobile,
+  normalizePkMobile,
+} from './phone';
 
 describe('normalizePkMobile', () => {
   it.each(['03001234567', '+923001234567', '923001234567', '0092 300 1234567', '300-1234567'])(
@@ -17,6 +22,11 @@ describe('normalizePkMobile', () => {
     expect(formatPkMobileNational('300')).toBe('300');
     expect(formatPkMobileNational('3001234')).toBe('300 1234');
     expect(formatPkMobileDisplay('+923001234567')).toBe('+92 300 1234567');
+  });
+
+  it('recognizes only listed original allocation prefixes', () => {
+    expect(isSupportedPkMobile('+923441234567')).toBe(true);
+    expect(isSupportedPkMobile('+923991234567')).toBe(false);
   });
 });
 

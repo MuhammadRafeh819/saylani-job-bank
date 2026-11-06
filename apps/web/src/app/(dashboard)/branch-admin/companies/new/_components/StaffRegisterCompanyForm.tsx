@@ -5,16 +5,18 @@ import {
   LEGAL_STRUCTURE_LABELS,
   COMPANY_SIZE_BANDS,
   COMPANY_SIZE_LABELS,
+  staffRegisterCompanySchema,
 } from '@jobbank/shared';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { Button, Input, Select, Textarea } from '@/components/atoms';
-import { FormField, toast } from '@/components/molecules';
+import { FormField, PhoneInput, toast } from '@/components/molecules';
 import { ApiClientError, apiFetch } from '@/lib/api/client';
 
 interface Props {
   branches: { id: string; name: string }[];
   industries: { code: string; label: string }[];
+  companiesPath: '/branch-admin/companies' | '/super-admin/companies';
 }
 
 const STRUCTURE_OPTIONS = LEGAL_STRUCTURES.map((v) => ({
@@ -23,9 +25,10 @@ const STRUCTURE_OPTIONS = LEGAL_STRUCTURES.map((v) => ({
 }));
 const SIZE_OPTIONS = COMPANY_SIZE_BANDS.map((v) => ({ value: v, label: COMPANY_SIZE_LABELS[v] }));
 
-export function StaffRegisterCompanyForm({ branches, industries }: Props) {
+export function StaffRegisterCompanyForm({ branches, industries, companiesPath }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const idempotency = useRef<{ fingerprint: string; key: string } | null>(null);
 
   const [branchId, setBranchId] = useState(branches.length === 1 ? branches[0]!.id : '');
   const [legalName, setLegalName] = useState('');
@@ -37,6 +40,10 @@ export function StaffRegisterCompanyForm({ branches, industries }: Props) {
   const [sizeBand, setSizeBand] = useState('');
   const [website, setWebsite] = useState('');
   const [description, setDescription] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactDesignation, setContactDesignation] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const industryOptions = industries.map((i) => ({ value: i.code, label: i.label }));
@@ -45,26 +52,56 @@ export function StaffRegisterCompanyForm({ branches, industries }: Props) {
   function handleSubmit() {
     startTransition(async () => {
       setError(null);
+      const payload = {
+        branchId,
+        legalName: legalName.trim(),
+        tradeName: tradeName.trim() || null,
+        legalStructure,
+        ntn: ntn.trim(),
+        registrationNo: registrationNo.trim() || null,
+        industryCode,
+        sizeBand,
+        website: website.trim() || null,
+        description: description.trim() || null,
+        contacts: {
+          items: [
+            {
+              name: contactName.trim(),
+              designation: contactDesignation.trim() || null,
+              phone: contactPhone.trim(),
+              email: contactEmail.trim() || null,
+              isPrimary: true,
+            },
+          ],
+        },
+      };
+      const parsed = staffRegisterCompanySchema.safeParse(payload);
+      if (!parsed.success) {
+        setError(
+          parsed.error.issues
+            .map((issue) => `${issue.path.join('.') || 'form'}: ${issue.message}`)
+            .join('; '),
+        );
+        return;
+      }
       try {
+        const fingerprint = JSON.stringify(parsed.data);
+        if (idempotency.current?.fingerprint !== fingerprint) {
+          idempotency.current = { fingerprint, key: crypto.randomUUID() };
+        }
         await apiFetch('/api/v1/companies', {
           method: 'POST',
-          body: {
-            branchId,
-            legalName: legalName.trim(),
-            tradeName: tradeName.trim() || null,
-            legalStructure,
-            ntn: ntn.trim(),
-            registrationNo: registrationNo.trim() || null,
-            industryCode,
-            sizeBand,
-            website: website.trim() || null,
-            description: description.trim() || null,
-          },
+          body: parsed.data,
+          idempotencyKey: idempotency.current.key,
         });
-        toast.success('Company registered as draft');
-        router.push('/branch-admin/companies');
+        toast.success('Company registered and verified');
+        router.push(companiesPath);
       } catch (e) {
-        setError(e instanceof ApiClientError ? e.message : 'Something went wrong');
+        if (e instanceof ApiClientError && e.issues.length > 0) {
+          setError(e.issues.map((issue) => `${issue.path}: ${issue.message}`).join('; '));
+        } else {
+          setError(e instanceof ApiClientError ? e.message : 'Something went wrong');
+        }
       }
     });
   }
@@ -149,6 +186,50 @@ export function StaffRegisterCompanyForm({ branches, industries }: Props) {
             rows={3}
           />
         </FormField>
+        <div className="border-border grid gap-4 rounded-lg border p-4 sm:col-span-2">
+          <div>
+            <h2 className="text-fg font-medium">Authorised contact</h2>
+            <p className="text-fg-muted mt-1 text-sm">
+              The person who provided or confirmed these company details.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Full name" required>
+              <Input
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value.replace(/[^\p{L}\s.'-]/gu, ''))}
+                placeholder="Contact person"
+                maxLength={120}
+              />
+            </FormField>
+            <FormField label="Designation">
+              <Input
+                value={contactDesignation}
+                onChange={(e) =>
+                  setContactDesignation(e.target.value.replace(/[^\p{L}\s.'-]/gu, ''))
+                }
+                placeholder="e.g. HR Manager"
+                maxLength={120}
+              />
+            </FormField>
+            <FormField label="Phone" required>
+              <PhoneInput
+                aria-label="Authorised contact phone"
+                value={contactPhone}
+                onChange={(change) => setContactPhone(change.e164 ?? change.national)}
+              />
+            </FormField>
+            <FormField label="Email">
+              <Input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="Optional"
+                maxLength={254}
+              />
+            </FormField>
+          </div>
+        </div>
       </div>
       {error && <p className="text-danger text-sm">{error}</p>}
       <div className="flex gap-3">
@@ -156,7 +237,14 @@ export function StaffRegisterCompanyForm({ branches, industries }: Props) {
           onClick={handleSubmit}
           loading={pending}
           disabled={
-            !branchId || !legalName || !legalStructure || !ntn || !industryCode || !sizeBand
+            !branchId ||
+            !legalName ||
+            !legalStructure ||
+            !ntn ||
+            !industryCode ||
+            !sizeBand ||
+            !contactName ||
+            !contactPhone
           }
         >
           Register company

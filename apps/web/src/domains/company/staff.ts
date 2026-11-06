@@ -3,8 +3,9 @@ import { schema } from '@jobbank/db';
 import {
   COMPANY_STATUSES,
   PUBLIC_COMPANY_STATUSES,
+  VERIFICATION_STATES,
   type CompanyStatus,
-  type RegisterCompanyInput,
+  type StaffRegisterCompanyInput,
   type UpdateCompanyInput,
 } from '@jobbank/shared';
 import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
@@ -14,7 +15,7 @@ import { masterDataLabels } from '@/domains/settings';
 import { runCommand } from '@/domains/shared/audit';
 import {
   ConflictError,
-  ForbiddenError,
+  isUniqueViolation,
   NotFoundError,
   ValidationError,
 } from '@/domains/shared/errors';
@@ -29,12 +30,11 @@ import {
 } from '@/domains/shared/scope';
 import { db } from '@/lib/db';
 import { companyMachine, READY } from './machine';
-import { emailEmployers } from './notify';
 import {
   buildCompanyView,
   c,
+  contacts,
   loadCompany,
-  members,
   openVerification,
   recordTransition,
   ver,
@@ -45,6 +45,7 @@ import {
 // ─── Company listing ───────────────────────────────────────────────────
 
 export const COMPANY_SORTABLE = ['legalName', 'createdAt', 'status'] as const;
+const ACTIVE_NTN_CONSTRAINT = 'companies_ntn_active_uq';
 
 export const companyFilters = {
   status: z.enum(COMPANY_STATUSES).optional(),
@@ -241,9 +242,11 @@ export async function assignVerifier(
     const round = await openVerification(tx, row.id, { forUpdate: true });
     if (!round) throw new NotFoundError('Open verification for company', companyId);
     const prevVerifier = round.assignedVerifierId;
+    const verificationState = VERIFICATION_STATES.find((state) => state === to);
+    if (!verificationState) throw new Error(`Invalid verification state for assignment: ${to}`);
     await tx
       .update(ver)
-      .set({ state: to as any, assignedVerifierId: input.verifierId })
+      .set({ state: verificationState, assignedVerifierId: input.verifierId })
       .where(eq(ver.id, round.id));
     if (row.status !== to) {
       await tx.update(c).set({ status: to }).where(eq(c.id, row.id));
@@ -307,40 +310,72 @@ export async function transferCompany(
 /** Branch Admin or Super Admin registers a company on behalf of an employer. */
 export async function staffRegisterCompany(
   ctx: SignedIn,
-  input: RegisterCompanyInput & { branchId: string },
+  input: StaffRegisterCompanyInput,
 ): Promise<CompanyView> {
   assertPermission(ctx.actor, 'company:manage');
   if (!isSuperAdmin(ctx.actor)) assertBranchAccess(ctx.actor, input.branchId);
 
-  const { branchId, ...companyInput } = input;
-  const [existing] = await db
-    .select({ id: c.id })
-    .from(c)
-    .where(and(eq(c.ntn, companyInput.ntn), sql`${c.status} not in ('DRAFT', 'REJECTED')`));
-  if (existing) {
-    throw new ConflictError(
-      'A company with this NTN is already registered with Saylani Job Bank.',
-      { reason: 'NTN_TAKEN' },
-    );
+  const { branchId, contacts: contactInput, ...companyInput } = input;
+  let createdId: string;
+  try {
+    createdId = await runCommand(ctx, async ({ tx, audit }) => {
+      const [existing] = await tx
+        .select({ id: c.id })
+        .from(c)
+        .where(and(eq(c.ntn, companyInput.ntn), sql`${c.status} not in ('DRAFT', 'REJECTED')`));
+      if (existing) {
+        throw new ConflictError(
+          'A company with this NTN is already registered with Saylani Job Bank.',
+          { reason: 'NTN_TAKEN' },
+        );
+      }
+
+      const verifiedAt = new Date();
+      const [row] = await tx
+        .insert(c)
+        .values({
+          ...companyInput,
+          branchId,
+          status: 'VERIFIED',
+          verifiedAt,
+          createdBy: ctx.actor.userId,
+        })
+        .returning();
+      await tx.insert(contacts).values(
+        contactInput.items.map((item, sortOrder) => ({
+          ...item,
+          companyId: row!.id,
+          sortOrder,
+        })),
+      );
+      audit({
+        action: 'company.register_staff_assisted',
+        entityType: 'company',
+        entityId: row!.id,
+        branchId,
+        after: {
+          ...companyInput,
+          branchId,
+          status: 'VERIFIED',
+          registrationSource: 'STAFF_ASSISTED',
+          createdBy: ctx.actor.userId,
+          verifiedBy: ctx.actor.userId,
+          verifiedAt: verifiedAt.toISOString(),
+        },
+      });
+      return row!.id;
+    });
+  } catch (error) {
+    if (isUniqueViolation(error, ACTIVE_NTN_CONSTRAINT)) {
+      throw new ConflictError(
+        'A company with this NTN is already registered with Saylani Job Bank.',
+        { reason: 'NTN_TAKEN' },
+      );
+    }
+    throw error;
   }
 
-  let createdId: string | null = null;
-  await runCommand(ctx, async ({ tx, audit }) => {
-    const [row] = await tx
-      .insert(c)
-      .values({ ...companyInput, branchId, createdBy: ctx.actor.userId })
-      .returning();
-    createdId = row!.id;
-    audit({
-      action: 'company.register',
-      entityType: 'company',
-      entityId: row!.id,
-      branchId,
-      after: { ...companyInput, branchId },
-    });
-  });
-
-  const [row] = await db.select().from(c).where(eq(c.id, createdId!));
+  const [row] = await db.select().from(c).where(eq(c.id, createdId));
   return buildCompanyView(db, row!);
 }
 
