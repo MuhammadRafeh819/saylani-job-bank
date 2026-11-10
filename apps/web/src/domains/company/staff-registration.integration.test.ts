@@ -214,11 +214,18 @@ describe('staff-assisted company registration', () => {
     };
     const job = await call(createJobRoute, '/api/v1/jobs', {
       method: 'POST',
-      jar: branchAdmin,
+      jar: admin,
       body: jobInput,
       headers: { 'idempotency-key': jobKey },
     });
     expect(job.status, JSON.stringify(job.body)).toBe(201);
+    const deniedBranchJob = await call(createJobRoute, '/api/v1/jobs', {
+      method: 'POST',
+      jar: branchAdmin,
+      body: jobInput,
+      headers: { 'idempotency-key': `denied-job-${Date.now()}-${sequence++}` },
+    });
+    expect(deniedBranchJob.status).toBe(403);
     const [lhrCompany] = await db
       .select({ id: schema.companies.id })
       .from(schema.companies)
@@ -307,7 +314,7 @@ describe('staff-assisted company registration', () => {
 
     const replayedJob = await call(createJobRoute, '/api/v1/jobs', {
       method: 'POST',
-      jar: branchAdmin,
+      jar: admin,
       body: jobInput,
       headers: { 'idempotency-key': jobKey },
     });
@@ -364,7 +371,7 @@ describe('staff-assisted company registration', () => {
       `/api/v1/companies/${otherCompany!.id}/jobs/${jobId}`,
       {
         method: 'PATCH',
-        jar: branchAdmin,
+        jar: admin,
         params: { id: otherCompany!.id, jobId },
         body: { title: 'Should not be editable from another company' },
       },
@@ -373,7 +380,7 @@ describe('staff-assisted company registration', () => {
 
     const editedJob = await call(updateJobRoute, `/api/v1/jobs/${jobId}`, {
       method: 'PATCH',
-      jar: branchAdmin,
+      jar: admin,
       params: { id: jobId },
       body: { title: 'Updated staff-created job', companyId: lhrBranchId },
     });
@@ -390,7 +397,7 @@ describe('staff-assisted company registration', () => {
       `/api/v1/companies/${otherCompany!.id}/jobs/${jobId}/status`,
       {
         method: 'PATCH',
-        jar: branchAdmin,
+        jar: admin,
         params: { id: otherCompany!.id, jobId },
         body: { status: 'CLOSED' },
       },
@@ -399,7 +406,7 @@ describe('staff-assisted company registration', () => {
 
     const unauthorizedPublish = await call(changeJobStatusRoute, `/api/v1/jobs/${jobId}/status`, {
       method: 'PATCH',
-      jar: branchAdmin,
+      jar: admin,
       params: { id: jobId },
       body: { status: 'OPEN' },
     });
@@ -410,7 +417,7 @@ describe('staff-assisted company registration', () => {
       `/api/v1/companies/${companyId}/jobs/${jobId}/status`,
       {
         method: 'PATCH',
-        jar: branchAdmin,
+        jar: admin,
         params: { id: companyId, jobId },
         body: { status: 'CLOSED', note: 'Archive historical job' },
       },
@@ -423,7 +430,7 @@ describe('staff-assisted company registration', () => {
       `/api/v1/companies/${companyId}/jobs`,
       {
         method: 'POST',
-        jar: branchAdmin,
+        jar: admin,
         params: { id: companyId },
         body: {
           title: `Company tab job ${Date.now()}`,
@@ -497,8 +504,7 @@ describe('staff-assisted company registration', () => {
       jar: branchAdmin,
       headers: { 'idempotency-key': idempotencyKey() },
     });
-    expect(branchAdminResult.status, JSON.stringify(branchAdminResult.body)).toBe(201);
-    expect(branchAdminResult.body.data.status).toBe('VERIFIED');
+    expect(branchAdminResult.status, JSON.stringify(branchAdminResult.body)).toBe(403);
   });
 
   it('rejects unauthorized and cross-branch company creation', async () => {

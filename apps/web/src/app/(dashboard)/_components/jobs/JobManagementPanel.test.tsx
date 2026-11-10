@@ -202,4 +202,25 @@ describe('JobManagementPanel', () => {
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
   });
+
+  it('uses a full-card link without nesting management buttons inside it', async () => {
+    const user = userEvent.setup();
+    const base = `/branch-admin/companies/${savedJob.companyId}`;
+    render(
+      <JobManagementPanel
+        companyId={savedJob.companyId}
+        jobs={[savedJob]}
+        categories={categories}
+        jobLinkBasePath={base}
+        canManage
+      />,
+    );
+    const link = screen.getByRole('link', { name: savedJob.title });
+    expect(link).toHaveAttribute('href', `${base}/${savedJob.id}`);
+    expect(link).toHaveClass('absolute', 'inset-0');
+    expect(link).toHaveClass('focus-visible:ring-2');
+    expect(link.querySelector('button')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByRole('textbox', { name: 'Job title' })).toHaveValue(savedJob.title);
+  });
 });

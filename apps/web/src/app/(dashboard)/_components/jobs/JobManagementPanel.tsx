@@ -24,6 +24,7 @@ type Props = {
   companyId?: string;
   companies?: JobFormCompany[];
   jobBasePath?: string;
+  jobLinkBasePath?: string;
   canCreate?: boolean;
   totalCount?: number;
 };
@@ -44,6 +45,7 @@ export function JobManagementPanel({
   companyId,
   companies = [],
   jobBasePath,
+  jobLinkBasePath,
   canCreate: canCreateOverride,
   totalCount,
 }: Props) {
@@ -94,6 +96,7 @@ export function JobManagementPanel({
   const canCreate =
     canManage && (Boolean(companyId) || companies.length > 0) && canCreateOverride !== false;
   const isGlobalPage = Boolean(jobBasePath);
+  const linkBasePath = jobLinkBasePath ?? jobBasePath;
 
   return (
     <section
@@ -138,13 +141,25 @@ export function JobManagementPanel({
             return (
               <div
                 key={job.id}
-                className="border-border flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
+                className={
+                  jobLinkBasePath
+                    ? 'border-border hover:bg-surface-muted relative flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4'
+                    : 'border-border flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4'
+                }
               >
+                {jobLinkBasePath && (
+                  <NextLink
+                    href={`${jobLinkBasePath}/${job.id}`}
+                    className="focus-visible:ring-primary absolute inset-0 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                  >
+                    <span className="sr-only">{job.title}</span>
+                  </NextLink>
+                )}
                 <div>
-                  {jobBasePath ? (
+                  {linkBasePath && !jobLinkBasePath ? (
                     <NextLink
                       className="text-fg font-medium hover:underline"
-                      href={`${jobBasePath}/${job.id}`}
+                      href={`${linkBasePath}/${job.id}`}
                     >
                       {job.title}
                     </NextLink>
@@ -159,7 +174,13 @@ export function JobManagementPanel({
                 <div className="flex items-center gap-2">
                   <Badge tone={STATUS_TONE[job.status]}>{JOB_STATUS_LABELS[job.status]}</Badge>
                   {canChange && (
-                    <>
+                    <div
+                      className={
+                        jobLinkBasePath
+                          ? 'relative z-10 flex items-center gap-2'
+                          : 'flex items-center gap-2'
+                      }
+                    >
                       <Button
                         size="sm"
                         variant="secondary"
@@ -186,7 +207,7 @@ export function JobManagementPanel({
                           </Button>
                         }
                       />
-                    </>
+                    </div>
                   )}
                 </div>
               </div>

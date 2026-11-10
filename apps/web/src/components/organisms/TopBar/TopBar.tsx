@@ -10,7 +10,6 @@ import { NotificationBell } from './NotificationBell';
 import type { TopBarProps } from './topBar.types';
 
 export function TopBar({
-  title,
   onMenuClick,
   branchSwitcher,
   user,

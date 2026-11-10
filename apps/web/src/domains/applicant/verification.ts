@@ -79,7 +79,7 @@ export async function ensureApplicantVerificationToken(
   applicantId: string,
   regenerate = false,
 ): Promise<string> {
-  assertPermission(ctx.actor, regenerate ? 'applicant:manage' : 'applicant:read');
+  assertPermission(ctx.actor, 'applicant:manage');
   return runCommand(
     ctx,
     async ({ tx, audit }) => {

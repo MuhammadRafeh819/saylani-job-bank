@@ -20,6 +20,7 @@ export {
 } from './rules';
 export {
   forceCloseJob,
+  getCompanyJobDetail,
   getJobDetail,
   JOB_SORTABLE,
   jobFilters,

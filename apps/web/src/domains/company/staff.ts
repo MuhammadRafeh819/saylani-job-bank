@@ -24,6 +24,7 @@ import {
   assertBranchAccess,
   assertPermission,
   branchScope,
+  hasRole,
   hasPermission,
   isSuperAdmin,
   type Actor,
@@ -65,7 +66,7 @@ export interface CompanyListItem {
 }
 
 /**
- * Branch Admin: VERIFIED + SUSPENDED in their branch(es).
+ * Branch Admin: all companies in their branch(es).
  * Super Admin: all companies, any status.
  * Verifiers have their own queue (listQueue) and do not use this endpoint.
  */
@@ -76,20 +77,21 @@ export async function listCompanies(
     { status?: CompanyStatus; branchId?: string }
   >,
 ) {
-  // Both company:read (Branch Admin for verified) and company:manage (Super Admin) can list.
+  // Readers and managers can list; status visibility is determined separately.
   const canManage = hasPermission(actor, 'company:manage');
   if (!canManage) assertPermission(actor, 'company:read');
   const f = query.filters;
 
-  const visibleStatuses = canManage
-    ? f.status
-      ? [f.status]
-      : [...COMPANY_STATUSES]
-    : f.status
-      ? (PUBLIC_COMPANY_STATUSES as readonly string[]).includes(f.status)
+  const visibleStatuses =
+    canManage || hasRole(actor, 'BRANCH_ADMIN')
+      ? f.status
         ? [f.status]
-        : []
-      : [...PUBLIC_COMPANY_STATUSES];
+        : [...COMPANY_STATUSES]
+      : f.status
+        ? (PUBLIC_COMPANY_STATUSES as readonly string[]).includes(f.status)
+          ? [f.status]
+          : []
+        : [...PUBLIC_COMPANY_STATUSES];
   if (visibleStatuses.length === 0) return { items: [], pagination: paginationMeta(query, 0) };
 
   const conditions: (SQL | undefined)[] = [
@@ -307,7 +309,7 @@ export async function transferCompany(
   return getCompanyDetail(ctx.actor, companyId);
 }
 
-/** Branch Admin or Super Admin registers a company on behalf of an employer. */
+/** An authorized manager registers a company on behalf of an employer. */
 export async function staffRegisterCompany(
   ctx: SignedIn,
   input: StaffRegisterCompanyInput,

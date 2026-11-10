@@ -1,9 +1,13 @@
-import { listCompanies } from '@/domains/company';
+import { COMPANY_SORTABLE, companyFilters, listCompanies } from '@/domains/company';
 import { requireRole } from '@/domains/auth';
 import { Badge, Button, Link } from '@/components/atoms';
 import { EmptyState } from '@/components/molecules';
 import { Building2, PlusCircle } from 'lucide-react';
 import NextLink from 'next/link';
+import { parseListQuery } from '@/domains/shared/pagination';
+import { BranchListPagination, branchListParams } from '../_components/BranchListControls';
+import { InstantListFilters } from '../_components/InstantListFilters';
+import { z } from 'zod';
 
 export const metadata = { title: 'Companies' };
 
@@ -20,39 +24,82 @@ const STATUS_BADGE: Record<
   REJECTED: { label: 'Rejected', tone: 'danger' },
   DRAFT: { label: 'Draft', tone: 'neutral' },
 };
+const FILTER_STATUSES = [
+  { value: 'VERIFIED', label: 'Verified' },
+  { value: 'SUSPENDED', label: 'Suspended' },
+  { value: 'UNDER_VERIFICATION', label: 'Under Review' },
+  { value: 'INFO_REQUESTED', label: 'Info needed' },
+  { value: 'REJECTED', label: 'Rejected' },
+] as const;
 
-export default async function BranchAdminCompaniesPage() {
+export default async function BranchAdminCompaniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { actor } = await requireRole('BRANCH_ADMIN');
-  const { items, pagination } = await listCompanies(actor, {
-    page: 1,
-    pageSize: 100,
-    limit: 100,
-    offset: 0,
-    sort: { field: 'legalName', direction: 'asc' },
-    q: undefined,
-    filters: {},
+  const params = branchListParams(await searchParams);
+  if (!params.has('status')) params.set('status', 'VERIFIED');
+  const query = parseListQuery(params, {
+    sortable: COMPANY_SORTABLE,
+    defaultSort: { field: 'legalName', direction: 'asc' },
+    filters: {
+      ...companyFilters,
+      status: z.enum(['VERIFIED', 'SUSPENDED', 'UNDER_VERIFICATION', 'INFO_REQUESTED', 'REJECTED']),
+    },
   });
+  const [{ items, pagination }, allCompanies] = await Promise.all([
+    listCompanies(actor, query),
+    listCompanies(actor, {
+      ...query,
+      q: undefined,
+      filters: {},
+      page: 1,
+      limit: 1,
+      pageSize: 1,
+      offset: 0,
+    }),
+  ]);
 
   return (
     <div className="grid w-full gap-6">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-fg text-2xl font-semibold">Companies</h1>
-          <p className="text-fg-muted mt-1 text-sm">{pagination.total} in your branch</p>
+          <p className="text-fg-muted mt-1 text-sm">
+            {allCompanies.pagination.total} in your branch
+          </p>
         </div>
-        <Button asChild size="sm">
-          <NextLink href="/branch-admin/companies/new">
-            <PlusCircle className="mr-1.5 size-4" />
-            Add company
-          </NextLink>
-        </Button>
+        {actor.permissions.has('company:manage') && (
+          <Button asChild size="sm">
+            <NextLink href="/branch-admin/companies/new">
+              <PlusCircle className="mr-1.5 size-4" />
+              Add company
+            </NextLink>
+          </Button>
+        )}
       </header>
 
+      <div className="grid gap-3">
+        <InstantListFilters
+          action="/branch-admin/companies"
+          query={params.toString()}
+          label="companies"
+          statuses={FILTER_STATUSES}
+          defaultStatus="VERIFIED"
+        />
+        <BranchListPagination
+          action="/branch-admin/companies"
+          params={params}
+          meta={pagination}
+          label="companies"
+        />
+      </div>
       {items.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title="No companies yet"
-          description="Employers will appear here once they register."
+          title="No matching companies"
+          description="Try another status or search term."
         />
       ) : (
         <div className="grid gap-3">

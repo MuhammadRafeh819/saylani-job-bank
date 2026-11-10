@@ -2,11 +2,13 @@ import { requireRole } from '@/domains/auth';
 import { listBranches } from '@/domains/branch';
 import { profileLists } from '../../../_components/applicants/lists';
 import { StaffRegisterApplicantForm } from '../../../_components/applicants/StaffRegisterApplicantForm';
+import { redirect } from 'next/navigation';
 
 export const metadata = { title: 'Register job seeker' };
 
 export default async function BranchAdminRegisterApplicantPage() {
   const { actor } = await requireRole('BRANCH_ADMIN');
+  if (!actor.permissions.has('applicant:create')) redirect('/forbidden');
   const [branches, lists] = await Promise.all([listBranches(actor), profileLists(actor)]);
   const branch = branches.find((item) => item.isActive && actor.branchIds.includes(item.id));
   const branchOptions = branch ? [{ value: branch.id, label: branch.name }] : [];

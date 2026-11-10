@@ -21,7 +21,7 @@ export default async function BranchAdminCompanyDetailPage({
     <StaffCompanyPanel
       company={company}
       jobs={jobs}
-      canSuspend
+      canSuspend={actor.permissions.has('company:suspend')}
       canManageJobs={actor.permissions.has('job:manage')}
       categories={categories.map((item) => ({ code: item.code, label: item.label }))}
     />

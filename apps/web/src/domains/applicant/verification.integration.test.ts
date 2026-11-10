@@ -113,7 +113,14 @@ describe('applicant registration form and QR verification', () => {
         ),
     ).toHaveLength(1);
 
-    const manager = await signInAdmin('branchadmin.khi@jobbank.local');
+    const branchAdmin = await signInAdmin('branchadmin.khi@jobbank.local');
+    const denied = await call(
+      regenerateVerificationToken,
+      `/api/v1/applicants/${id}/verification-token/regenerate`,
+      { method: 'POST', jar: branchAdmin, params: { id } },
+    );
+    expect(denied.status).toBe(403);
+    const manager = await signInAdmin('superadmin@jobbank.local');
     const rotated = await call(
       regenerateVerificationToken,
       `/api/v1/applicants/${id}/verification-token/regenerate`,

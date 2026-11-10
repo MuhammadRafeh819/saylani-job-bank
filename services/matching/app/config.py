@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "info"
+    internal_api_token: str | None = None
 
     # Worker
     worker_enabled: bool = True

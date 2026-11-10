@@ -8,7 +8,7 @@ import { apiHandler, created, ok } from '@/domains/shared/http';
 import { parseListQuery } from '@/domains/shared/pagination';
 import { staffRegisterCompanySchema } from '@jobbank/shared';
 
-/** GET /api/v1/companies — branch-scoped company list (Branch Admin: verified only; Super Admin: all). */
+/** GET /api/v1/companies — branch-scoped company list. */
 export const GET = apiHandler({
   permission: 'company:read',
   handler: async ({ actor, request }) => {
@@ -21,7 +21,7 @@ export const GET = apiHandler({
   },
 });
 
-/** POST /api/v1/companies — Branch Admin / Super Admin registers a company for their branch. */
+/** POST /api/v1/companies — authorized staff register a company. */
 export const POST = apiHandler({
   permission: 'company:manage',
   body: staffRegisterCompanySchema,
