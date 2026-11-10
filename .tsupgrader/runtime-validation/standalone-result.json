@@ -1,0 +1,18 @@
+{
+  "planHash": "70a67d6eba6f3cc1abbc63818f2c3bb1ada3d8471bcf5301f9d4fb656fdcf76d",
+  "phase": "standalone",
+  "recordedAtUtc": "2026-11-07T12:48:12.8359216Z",
+  "retryCount": 0,
+  "resetBaseline": false,
+  "complete": false,
+  "runningStep": "production-build",
+  "partialOutput": "$ turbo run build\r\n\r\n   \u2022 turbo 2.11.10\r\n   \u2022 Packages in scope: @jobbank/config, @jobbank/db, @jobbank/shared, @jobbank/web\r\n   \u2022 Running build in 4 packages\r\n   \u2022 Remote caching disabled\r\n\r\n@jobbank/web:build: cache miss, executing 2102a3a58e32a997\r\n@jobbank/web:build: $ next build\r\n@jobbank/web:build:    \u25B2 Next.js 15.5.27\r\n@jobbank/web:build:    - Environments: .env\r\n@jobbank/web:build: \r\n@jobbank/web:build:    Creating an optimized production build ...\r\n",
+  "cleanupCompleted": true,
+  "result": {
+    "setupSucceeded": false,
+    "setupDurationMs": 0,
+    "setupFailureOutput": null,
+    "assertions": [],
+    "executions": []
+  }
+}

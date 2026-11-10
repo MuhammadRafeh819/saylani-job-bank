@@ -32,9 +32,9 @@ describe('permission matrix encodes the PRD rules', () => {
     expect(ROLE_PERMISSIONS.EMPLOYER).not.toContain('applicant:verify_identity');
   });
 
-  it('applicant records: staff correct them, only admins move them between branches', () => {
+  it('applicant records: staff correct them and admins transfer them', () => {
     expect(holders('applicant:verify_identity')).toEqual(['STAFF']);
-    expect(holders('applicant:manage')).toEqual(['SUPER_ADMIN', 'BRANCH_ADMIN', 'STAFF']);
+    expect(holders('applicant:manage')).toEqual(['SUPER_ADMIN', 'STAFF']);
     expect(holders('applicant:transfer')).toEqual(['SUPER_ADMIN', 'BRANCH_ADMIN']);
     expect(ROLE_PERMISSIONS.EMPLOYER.filter((p) => p.startsWith('applicant:'))).toEqual([]);
   });
@@ -44,8 +44,19 @@ describe('permission matrix encodes the PRD rules', () => {
     expect(holders('restriction:lift')).toEqual(['SUPER_ADMIN']);
   });
 
-  it('grants staff job management only to administrators', () => {
-    expect(holders('job:manage')).toEqual(['SUPER_ADMIN', 'BRANCH_ADMIN']);
+  it('grants staff job management only to Super Admin', () => {
+    expect(holders('job:manage')).toEqual(['SUPER_ADMIN']);
+  });
+
+  it('grants Branch Admin read-only access plus applicant transfer', () => {
+    expect(ROLE_PERMISSIONS.BRANCH_ADMIN.filter((p) => p.startsWith('applicant:'))).toEqual([
+      'applicant:read',
+      'applicant:transfer',
+    ]);
+    for (const resource of ['company:', 'job:'])
+      expect(ROLE_PERMISSIONS.BRANCH_ADMIN.filter((p) => p.startsWith(resource))).toEqual([
+        `${resource}read`,
+      ]);
   });
 
   it('only Job Bank staff refer candidates and run Job Bank interviews', () => {

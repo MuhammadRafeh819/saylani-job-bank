@@ -448,7 +448,11 @@ export const identityVerificationSchema = z
 export type IdentityVerificationInput = z.infer<typeof identityVerificationSchema>;
 
 export const changePhoneSchema = z.object({ phone: z.string().trim().min(10).max(20), reason });
-export const transferApplicantSchema = z.object({ branchId: z.uuid('Choose a branch'), reason });
+export const transferApplicantSchema = z.object({
+  branchId: z.uuid('Choose a branch'),
+  expectedBranchId: z.uuid('Invalid current branch').optional(),
+  reason,
+});
 
 // ─── Completeness & activation ─────────────────────────────────────────
 

@@ -380,7 +380,7 @@ function TransferDialog({
     try {
       const { data } = await apiFetch<{ branch: { name: string } }>(
         `/api/v1/applicants/${applicant.id}/transfer`,
-        { method: 'POST', body: { branchId, reason } },
+        { method: 'POST', body: { branchId, expectedBranchId: applicant.branch?.id, reason } },
       );
       toast.success(`Moved to ${data.branch.name}`);
       setOpen(false);
@@ -460,11 +460,13 @@ export function ApplicantDetailView({
             <Link href={`${listPath}/${applicant.id}/edit`}>Edit Profile</Link>
           </Button>
         )}
-        <Button asChild variant="secondary" leftIcon={<Printer />}>
-          <Link href={`/print/applicants/${applicant.id}/registration`}>
-            Print Registration Form
-          </Link>
-        </Button>
+        {applicant.can.manage && (
+          <Button asChild variant="secondary" leftIcon={<Printer />}>
+            <Link href={`/print/applicants/${applicant.id}/registration`}>
+              Print Registration Form
+            </Link>
+          </Button>
+        )}
       </div>
       {applicant.status === 'INACTIVE' && applicant.statusReason && (
         <p className="bg-surface-muted text-fg-muted rounded-lg px-4 py-3 text-sm">

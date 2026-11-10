@@ -260,6 +260,11 @@ export function StaffCompanyPanel({
         categories={categories}
         canManage={canManageJobs}
         canCreate={company_.status === 'VERIFIED'}
+        jobLinkBasePath={
+          pathname.startsWith('/branch-admin/')
+            ? `/branch-admin/companies/${company_.id}`
+            : undefined
+        }
       />
     </div>
   );

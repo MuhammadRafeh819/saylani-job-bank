@@ -429,7 +429,7 @@ describe('staff applicant profile update', () => {
         params: { id: ownApplicantId },
       },
     );
-    expect(allowedBranchAdmin.status, JSON.stringify(allowedBranchAdmin.body)).toBe(200);
+    expect(allowedBranchAdmin.status, JSON.stringify(allowedBranchAdmin.body)).toBe(403);
 
     const superAdmin = await signInAdmin('superadmin@jobbank.local');
     const allowed = await call(updateProfile, `/api/v1/applicants/${applicantId}/profile`, {

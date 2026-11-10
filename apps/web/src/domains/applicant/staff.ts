@@ -1074,12 +1074,21 @@ export async function staffSetApplicantStatus(
 export async function transferApplicant(
   ctx: SignedIn,
   applicantId: string,
-  input: { branchId: string; reason: string },
+  input: { branchId: string; expectedBranchId?: string; reason: string },
 ): Promise<{ applicantId: string; branch: BranchContact }> {
   assertPermission(ctx.actor, 'applicant:transfer');
-  await scopedApplicant(ctx.actor, applicantId);
+  const source = await scopedApplicant(ctx.actor, applicantId);
+  if (!isSuperAdmin(ctx.actor) && !input.expectedBranchId) {
+    throw new ValidationError([
+      { path: 'expectedBranchId', message: 'Current branch is required' },
+    ]);
+  }
   return runCommand(ctx, async ({ tx, audit }) => {
     const row = await loadApplicant(tx, applicantId, { forUpdate: true });
+    assertBranchAccess(ctx.actor, row.branchId, { entityType: 'applicant', entityId: row.id });
+    if (row.branchId !== (input.expectedBranchId ?? source.branchId)) {
+      throw new ConflictError('The applicant branch has changed. Refresh and try again.');
+    }
     if (row.branchId === input.branchId) {
       throw new ConflictError('The applicant is already in this branch');
     }

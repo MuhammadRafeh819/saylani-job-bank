@@ -112,7 +112,7 @@ describe('staff-assisted applicant registration', () => {
     });
   });
 
-  it('allows a Branch Admin only in the assigned branch', async () => {
+  it('rejects Branch Admin registration in both assigned and other branches', async () => {
     const branchAdmin = await signInAdmin('branchadmin.khi@jobbank.local');
     const ownBranch = registration(khi);
     const allowed = await call(registerForStaff, '/api/v1/applicants/staff-register', {
@@ -121,7 +121,7 @@ describe('staff-assisted applicant registration', () => {
       jar: branchAdmin,
       headers: { 'idempotency-key': idempotencyKey() },
     });
-    expect(allowed.status, JSON.stringify(allowed.body)).toBe(201);
+    expect(allowed.status, JSON.stringify(allowed.body)).toBe(403);
 
     const crossBranch = registration(lhr);
     const rejected = await call(registerForStaff, '/api/v1/applicants/staff-register', {

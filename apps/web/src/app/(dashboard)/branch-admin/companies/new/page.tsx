@@ -2,11 +2,13 @@ import { requireRole } from '@/domains/auth';
 import { listBranches } from '@/domains/branch';
 import { listMasterData } from '@/domains/settings';
 import { StaffRegisterCompanyForm } from './_components/StaffRegisterCompanyForm';
+import { redirect } from 'next/navigation';
 
 export const metadata = { title: 'Add company' };
 
 export default async function BranchAdminAddCompanyPage() {
   const { actor } = await requireRole('BRANCH_ADMIN');
+  if (!actor.permissions.has('company:manage')) redirect('/forbidden');
   const [branches, industries] = await Promise.all([
     listBranches(actor),
     listMasterData(actor, { type: 'INDUSTRY' }),

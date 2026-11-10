@@ -10,6 +10,7 @@ import {
 import { and, asc, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { runCommand } from '@/domains/shared/audit';
+import { getCompanyDetail } from '@/domains/company';
 import { ForbiddenError, NotFoundError } from '@/domains/shared/errors';
 import { paginationMeta, type ListQuery } from '@/domains/shared/pagination';
 import {
@@ -150,6 +151,17 @@ export async function getJobDetail(actor: Actor, jobId: string): Promise<JobView
     }
   }
   return buildJobView(db, row);
+}
+
+export async function getCompanyJobDetail(actor: Actor, companyId: string, jobId: string) {
+  const company = await getCompanyDetail(actor, companyId);
+  assertPermission(actor, 'job:read');
+  const row = await loadJob(db, jobId);
+  assertBranchAccess(actor, row.branchId, { entityType: 'job', entityId: row.id });
+  if (row.companyId !== companyId || row.branchId !== company.branch?.id) {
+    throw new NotFoundError('Job');
+  }
+  return { company, job: await buildJobView(db, row) };
 }
 
 /** Lists only jobs belonging to an accessible company and branch. */

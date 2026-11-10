@@ -19,6 +19,7 @@ import { ApplicantsTable } from './ApplicantsTable';
 import { APPLICANT_STATUS_PILL } from './labels';
 import { profileLabels, profileLists } from './lists';
 import { StaffRegisterApplicantForm } from './StaffRegisterApplicantForm';
+import { redirect } from 'next/navigation';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -144,6 +145,7 @@ export async function ApplicantEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { actor } = await requireRole(role);
+  if (!actor.permissions.has('applicant:manage')) redirect('/forbidden');
   const { id } = await params;
   const [applicant, lists] = await Promise.all([
     loadForPage(actor, () => getApplicantForStaff(actor, id)),
